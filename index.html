@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Formulaire coupure d'électricité</title>
+  <script src="https://maps.googleapis.com/maps/api/js?key=TA_CLE_API&libraries=places"></script>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; }
+    input, button { width: 100%; padding: 12px; margin-top: 12px; font-size: 16px; }
+    label { display: block; margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h2>Déclarez une coupure d’électricité</h2>
+
+  <label for="ville">Votre ville :</label>
+  <input id="ville" name="ville" type="text" placeholder="Entrez votre ville" required />
+
+  <label>Avez-vous eu une coupure ?</label>
+  <label><input type="radio" name="coupure" value="Oui" required> Oui</label>
+  <label><input type="radio" name="coupure" value="Non"> Non</label>
+
+  <button onclick="envoyerFormulaire()">Envoyer</button>
+
+  <script>
+    // Google Autocomplete
+    let autocomplete;
+    window.onload = function () {
+      autocomplete = new google.maps.places.Autocomplete(
+        document.getElementById("ville"),
+        { types: ["(cities)"], componentRestrictions: { country: "fr" } }
+      );
+    };
+
+    function envoyerFormulaire() {
+      const ville = document.getElementById("ville").value;
+      const coupure = document.querySelector('input[name="coupure"]:checked')?.value;
+
+      if (!ville || !coupure) {
+        alert("Merci de remplir tous les champs.");
+        return;
+      }
+
+      fetch("TON_URL_APPS_SCRIPT", {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ville, coupure })
+      });
+
+      alert("Merci pour votre réponse !");
+      document.getElementById("ville").value = "";
+      document.querySelector('input[name="coupure"]:checked').checked = false;
+    }
+  </script>
+
+</body>
+</html>
