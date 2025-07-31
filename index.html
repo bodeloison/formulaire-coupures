@@ -25,7 +25,15 @@
 
   <p id="confirmation" style="display: none; margin-top: 20px; color: #5a52ff; text-align: center; font-weight: 600;">Merci, votre réponse a bien été envoyée !</p>
 
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-rJWgZwUxtjsLZ-w0VPOG2e4fVUmJGNA&libraries=places"></script>
   <script>
+    window.onload = function () {
+      new google.maps.places.Autocomplete(
+        document.getElementById("ville"),
+        { types: ["(cities)"], componentRestrictions: { country: "fr" } }
+      );
+    };
+
     const radios = document.querySelectorAll('input[name="coupure"]');
     const labels = document.querySelectorAll('label[style*="cursor: pointer"]');
     labels.forEach((label, i) => {
@@ -58,6 +66,6 @@
       document.getElementById("confirmation").style.display = "block";
     }
   </script>
-
 </div>
+
 
