@@ -34,7 +34,6 @@
   </p>
 </div>
 
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-rJWgZwUxtjsLZ-w0VPOG2e4fVUmJGNA&libraries=places"></script>
 <script>
   let validCities = [];
   let choixCoupure = "";
@@ -45,34 +44,34 @@
     const opts = document.querySelectorAll(".opt");
     const btn = document.getElementById("submitBtn");
 
-    const service = new google.maps.places.AutocompleteService();
-
-    // À chaque saisie, on récupère des prédictions
+    // 1) À chaque saisie, on interroge Nominatim
     input.addEventListener("input", () => {
-      const value = input.value;
-      if (value.length < 2) {
+      const q = input.value.trim();
+      if (q.length < 2) {
         dataList.innerHTML = "";
         validCities = [];
         return;
       }
-      service.getQueryPredictions({
-        input: value,
-        types: ["(cities)"],
-        componentRestrictions: { country: "fr" }
-      }, (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) return;
-        dataList.innerHTML = "";
-        validCities = [];
-        predictions.forEach(p => {
-          const opt = document.createElement("option");
-          opt.value = p.description;
-          dataList.appendChild(opt);
-          validCities.push(p.description);
+      fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(q)}&country=France&format=json&limit=5`)
+        .then(res => res.json())
+        .then(list => {
+          dataList.innerHTML = "";
+          validCities = [];
+          list.forEach(item => {
+            const name = item.display_name.split(',')[0];
+            const opt = document.createElement('option');
+            opt.value = name;
+            dataList.appendChild(opt);
+            if (!validCities.includes(name)) validCities.push(name);
+          });
+        })
+        .catch(() => {
+          dataList.innerHTML = "";
+          validCities = [];
         });
-      });
     });
 
-    // Gestion Oui/Non
+    // 2) Gestion Oui/Non
     opts.forEach(label => {
       label.addEventListener("click", () => {
         choixCoupure = label.dataset.value;
@@ -81,15 +80,16 @@
       });
     });
 
-    // Envoi
+    // 3) Envoi
     btn.addEventListener("click", () => {
-      const city = input.value;
+      const city = input.value.trim();
       if (!city || !choixCoupure || !validCities.includes(city)) {
-        alert("Merci de choisir une ville valide parmi la liste et de répondre à la question.");
+        alert("Merci de choisir une ville valide dans la liste et de répondre à la question.");
         return;
       }
       fetch("TON_URL_APPS_SCRIPT", {
-        method: "POST", mode: "no-cors",
+        method: "POST",
+        mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ville: city, coupure: choixCoupure })
       });
@@ -100,4 +100,3 @@
     });
   });
 </script>
-
