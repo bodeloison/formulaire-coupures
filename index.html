@@ -54,7 +54,7 @@
     const btn = document.getElementById("submitBtn");
 
     // 1) Charger le JSON des communes
-    fetch("communes.json")
+    fetch("Communes.json")
       .then(r => r.json())
       .then(data => {
         cities = data.map(c => c.nom);
