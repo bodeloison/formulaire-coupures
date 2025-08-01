@@ -6,25 +6,14 @@
   </h2>
 
   <div style="position:relative;margin-bottom:28px;">
-    <input id="ville" type="text" placeholder="Ex. : Coutances"
+    <input id="ville" type="text" placeholder="Ex. : Lyon"
            style="width:100%;padding:14px 16px;border:2px solid #5a52ff;border-radius:10px;
                   font-size:16px;box-sizing:border-box;">
     <ul id="suggestions" style="
-         list-style:none;
-         margin:4px 0 0;
-         padding:0;
-         position:absolute;
-         top:100%;
-         left:0;
-         right:0;
-         background:#fff;
-         border:1px solid #5a52ff;
-         border-top:none;
-         max-height:160px;
-         overflow-y:auto;
-         box-shadow:0 4px 12px rgba(0,0,0,0.1);
-         z-index:100;
-         display:none;
+         list-style:none;margin:4px 0 0;padding:0;position:absolute;
+         top:100%;left:0;right:0;background:#fff;border:1px solid #5a52ff;
+         border-top:none;max-height:160px;overflow-y:auto;
+         box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:100;display:none;
        "></ul>
   </div>
 
@@ -50,8 +39,13 @@
 </div>
 
 <script>
-  let cities = [];
-  let choixCoupure = "";
+  let cities = [], citiesNorm = [], choixCoupure = "";
+
+  function normalize(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+              .replace(/[-’']/g,' ').replace(/\s+/g,' ')
+              .trim().toLowerCase();
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("ville");
@@ -59,75 +53,78 @@
     const opts = document.querySelectorAll(".opt");
     const btn = document.getElementById("submitBtn");
 
-    // 1) On charge le JSON des communes depuis GitHub Pages
-    fetch("Communes.json")
-      .then(res => res.json())
+    // 1) Charger le JSON des communes
+    fetch("communes.json")
+      .then(r => r.json())
       .then(data => {
         cities = data.map(c => c.nom);
-      })
-      .catch(err => console.error("Erreur de chargement communes.json :", err));
+        citiesNorm = cities.map(normalize);
+      });
 
-    // 2) À chaque saisie, on filtre localement
+    // 2) Suggestions à chaque frappe
     input.addEventListener("input", () => {
-      const q = input.value.trim().toLowerCase();
-      if (!q) {
-        suggestions.style.display = "none";
-        return;
-      }
-      const matches = cities
-        .filter(name => name.toLowerCase().startsWith(q))
-        .slice(0, 5);
-      suggestions.innerHTML = matches
-        .map(name => `<li style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;
-                             transition:background .2s;">${name}</li>`)
-        .join("");
-      suggestions.style.display = matches.length ? "block" : "none";
+      const qNorm = normalize(input.value);
+      if (!qNorm) { suggestions.style.display='none'; return; }
+      const matches = citiesNorm
+        .map((cn,i)=>({cn,orig:cities[i]}))
+        .filter(item => item.cn.includes(qNorm))
+        .slice(0,5);
+      suggestions.innerHTML = matches.map(item=>
+        `<li style="padding:10px 14px;cursor:pointer;border-bottom:1px solid #eee;
+                    transition:background .2s;">${item.orig}</li>`
+      ).join("");
+      suggestions.style.display = matches.length ? 'block' : 'none';
     });
 
-    // 3) Sélectionner une suggestion
+    // 3) Cliquer une suggestion
     suggestions.addEventListener("click", e => {
-      if (e.target.tagName === "LI") {
+      if(e.target.tagName==='LI'){
         input.value = e.target.textContent;
-        suggestions.style.display = "none";
+        suggestions.style.display='none';
       }
     });
 
-    // 4) Gestion du choix Oui/Non
-    opts.forEach(label => {
-      label.addEventListener("click", () => {
+    // 4) Oui/Non
+    opts.forEach(label=>{
+      label.addEventListener("click",()=>{
         choixCoupure = label.dataset.value;
-        opts.forEach(l => l.style.borderColor = "transparent");
-        label.style.borderColor = "#5A52FF";
+        opts.forEach(l=>l.style.borderColor="transparent");
+        label.style.borderColor="#ffb81d";
+      });
+      label.addEventListener("mouseenter",()=>label.style.borderColor="#5A51FF");
+      label.addEventListener("mouseleave",()=> {
+        if(label.dataset.value!==choixCoupure) label.style.borderColor="transparent";
       });
     });
 
-    // 5) Envoi des données
-    btn.addEventListener("click", () => {
-      const ville = input.value.trim();
-      if (!ville || !cities.includes(ville)) {
-        alert("Merci de choisir une ville valide parmi les suggestions.");
+    // 5) Envoi
+    btn.addEventListener("click",()=>{
+      const villeRaw = input.value.trim();
+      const qNorm = normalize(villeRaw);
+      if(!qNorm || !citiesNorm.includes(qNorm)){
+        alert("Merci de saisir et sélectionner une ville valide.");
         return;
       }
-      if (!choixCoupure) {
-        alert("Merci de répondre à la question sur la coupure.");
+      if(!choixCoupure){
+        alert("Merci de répondre à la question.");
         return;
       }
-      fetch("TON_URL_APPS_SCRIPT", {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ville, coupure: choixCoupure })
+      // On retrouve la ville originale correcte
+      const index = citiesNorm.indexOf(qNorm);
+      const villeCorrecte = cities[index];
+      fetch("TON_URL_APPS_SCRIPT",{method:"POST",mode:"no-cors",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ville:villeCorrecte,coupure:choixCoupure})
       });
-      input.value = "";
-      choixCoupure = "";
-      opts.forEach(l => l.style.borderColor = "transparent");
-      document.getElementById("confirmation").style.display = "block";
+      input.value=""; choixCoupure=""; opts.forEach(l=>l.style.borderColor="transparent");
+      document.getElementById("confirmation").style.display="block";
     });
 
-    // 6) Fermer la liste si clic à l'extérieur
-    document.addEventListener("click", e => {
-      if (!e.target.closest('#ville')) suggestions.style.display = 'none';
+    // 6) Close suggestions
+    document.addEventListener("click", e=>{
+      if(!e.target.closest('#ville')) suggestions.style.display='none';
     });
   });
 </script>
+
 
